@@ -1,0 +1,70 @@
+<VirtualHost *:80>
+      ServerAdmin webmaster@localhost
+      ServerName {{ ServerName }}
+      Redirect permanent / https://{{ ServerName }}/
+
+ Alias /robots.txt /opt/apps/RatticWeb/static/robots.txt
+ Alias /favicon.ico /opt/apps/RatticWeb/static/favicon.ico
+
+ AliasMatch ^/([^/]*\.css) /opt/apps/RatticWeb/static/styles/$1
+
+ Alias /media/ /opt/apps/RatticWeb/media/
+ Alias /static/ /opt/apps/RatticWeb/static/
+
+ <Directory /opt/apps/RatticWeb/static>
+ Require all granted
+ </Directory>
+
+ <Directory /opt/apps/RatticWeb/media>
+ Require all granted
+ </Directory>
+
+ WSGIScriptAlias / /opt/apps/RatticWeb/ratticweb/wsgi.py
+ WSGIPassAuthorization On
+
+ <Directory /opt/apps/RatticWeb/ratticweb>
+   <Files wsgi.py>
+     Require all granted
+   </Files>
+ </Directory> 
+ </VirtualHost>
+
+<IfModule mod_ssl.c>
+<VirtualHost *:443>
+      ServerAdmin webmaster@localhost
+      ServerName {{ ServerName }}
+
+ Alias /robots.txt /opt/apps/RatticWeb/static/robots.txt
+ Alias /favicon.ico /opt/apps/RatticWeb/static/favicon.ico
+
+ AliasMatch ^/([^/]*\.css) /opt/apps/RatticWeb/static/styles/$1
+
+ Alias /media/ /opt/apps/RatticWeb/media/
+ Alias /static/ /opt/apps/RatticWeb/static/
+
+ <Directory /opt/apps/RatticWeb/static>
+ Require all granted
+ </Directory>
+
+ <Directory /opt/apps/RatticWeb/media>
+ Require all granted
+ </Directory>
+
+ WSGIScriptAlias / /opt/apps/RatticWeb/ratticweb/wsgi.py
+ WSGIPassAuthorization On
+ WSGIDaemonProcess rattic processes=2 threads=25 home=/opt/apps/RatticWeb/ python-path=/opt/apps/RatticWeb display-name=%{GROUP}
+ WSGIProcessGroup rattic
+
+ <Directory /opt/apps/RatticWeb/ratticweb>
+   <Files wsgi.py>
+     Require all granted
+   </Files>
+ </Directory> 
+        SSLEngine on
+        SSLCertificateFile /etc/apache2/ssl/server.crt
+        SSLCertificateKeyFile /etc/apache2/ssl//server.key
+        #SSLProtocol all -SSLv2 -SSLv3
+        ErrorLog ${APACHE_LOG_DIR}/piwik-error.log
+        CustomLog ${APACHE_LOG_DIR}/piwik-access.log combined
+</VirtualHost>
+</IfModule>
