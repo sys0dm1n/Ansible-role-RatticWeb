@@ -1,6 +1,8 @@
 # Ansible-role-RatticWeb
 Install RatticWeb for Ubuntu/Debian OS with ANSIBLE
 
+This was tested with Ubuntu Trusty 14.04, you might need to adapt it slightly for other distro.
+
 Rattic is a password management database designed for humans.
 
 Requirements
