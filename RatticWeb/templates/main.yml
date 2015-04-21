@@ -1,0 +1,18 @@
+[ratticweb]
+debug = false
+secretkey = {{ secretkey }}
+hostname = {{ ServerName }}
+passwordexpirydays = False
+urlroot = /
+
+[database]
+engine = django.db.backends.mysql
+name = rattic
+user = rattic
+password = {{ MySQL_rattic_pass }}
+host = 127.0.0.1
+port = 3306
+
+[filepaths]
+static = /opt/apps/RatticWeb/static
+help = /opt/apps/RatticWeb.wiki
