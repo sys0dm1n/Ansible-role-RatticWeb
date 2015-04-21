@@ -1,0 +1,6 @@
+---
+MySQL_root_pass: mypassword
+MySQL_rattic_pass: myratticsecurepass
+rattic_release_version: v1.2.2
+secretkey: IloveThisRandomSecretKey123
+ServerName: {{ inventory_hostname }}
