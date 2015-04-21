@@ -1,0 +1,7 @@
+---
+  - hosts: Inventory_host_name
+    user: root
+    sudo: yes
+
+    roles:
+      - RatticWeb
