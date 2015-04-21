@@ -1,0 +1,132 @@
+---
+#ref.: https://github.com/tildaslash/RatticWeb/wiki/RatticDB-on-Ubuntu-12.04-and-integration-with-Zentyal-via-OpenLDAP
+
+  - name: Install apache and required system libs
+    apt: package={{ item }} state=present update_cache=yes cache_valid_time=3600
+    with_items:
+      - apache2
+      - apache2-mpm-prefork
+      - apache2-utils
+      - libexpat1
+      - ssl-cert
+      - python-dev
+      - python-pip
+      - libapache2-mod-wsgi
+      - libapache2-mod-auth-mysql
+      - libldap2-dev
+      - libsasl2-dev
+      - libssl-dev
+#######  
+  - name: Install MySQL
+    apt: package={{ item }} state=installed force=yes update_cache=yes cache_valid_time=3600
+    with_items:
+      - mysql-server
+      - mysql-client
+      - mytop
+      - python-mysqldb
+
+  - name: Setting root user
+    mysql_user: name=root password={{ MySQL_root_pass }} priv=*.*:ALL,GRANT state=present
+    ignore_errors: true
+
+
+  - name: Get debian-sys-maint password from debian.cnf file
+    shell: 'grep password /etc/mysql/debian.cnf | sed -n 1p | cut -d " " -f3'
+    register: my_debian_pwd
+
+  - name: Set the fact for the other scripts to use
+    set_fact: debian_sys_maint_pwd='{{my_debian_pwd.stdout}}'
+
+  - name: MySQL setting debian-sys-maint user
+    mysql_user:
+      login_user=root
+      login_password={{ MySQL_root_pass }}
+      name=debian-sys-maint
+      password={{ debian_sys_maint_pwd }}
+      priv=*.*:ALL
+      state=present
+    ignore_errors: true
+#######    
+  # - name: Secure MySQL
+  #   shell: /usr/bin/mysql_secure_installation
+
+  - name: Install all python related stuff
+    pip: name={{ item }} state=present
+    with_items:
+      - Django
+      - python-ldap
+      - django-auth-ldap
+      - django-tastypie
+      - south
+      - django-user-sessions
+      - django-otp
+      - django-two-factor-auth
+      - markdown
+      - libxml2-dev
+      - python3-dev
+      - libxslt1-dev
+
+  - name: Prepare the folders RatticWeb
+    file: path=/opt/apps/RatticWeb state=directory owner=root group=root mode=755
+
+  - name: Clone Rattic
+    git: repo=git://github.com/tildaslash/RatticWeb.git
+         dest=/opt/apps/RatticWeb
+         version={{ rattic_release_version }}
+         accept_hostkey=yes
+
+  - name: Prepare the folders static
+    file: path=/opt/apps/RatticWeb/static state=directory owner=root group=root mode=755
+
+  - name: Install the python modules
+    shell: pip install -r /opt/apps/RatticWeb/requirements-mysql.txt
+
+  - name: Execute manage.py syncdb --noinpuy commands
+    shell: /opt/apps/RatticWeb/manage.py syncdb --noinput
+
+  - name: Execute manage.py migrate --all commands
+    shell: /opt/apps/RatticWeb/manage.py migrate --all
+
+  - name: Populate the static files directory
+    shell: /opt/apps/RatticWeb/manage.py collectstatic -c —noinput
+
+  - name: Create an initial user account (Username: admin, Password: rattic)
+    shell: /opt/apps/RatticWeb/manage.py demosetup
+
+  - name: Enable apache ssl module
+    apache2_module: state=present name=ssl
+    notify: Restart Apache2
+
+  - name: Prepare the folders ssl
+    file: path=/etc/apache2/ssl state=directory owner=root group=root mode=755
+
+  - name: create self-signed SSL cert
+    command: openssl req -new -nodes -x509 -subj "/C=FR/ST=Paris/L=Paris/O=IT/CN=${ansible_fqdn}" -days 3650 -keyout /etc/apache2/ssl/server.key -out /etc/apache2/ssl/server.crt -extensions v3_ca creates=/etc/apache2/ssl/server.crt
+
+  - name: Create Rattic Vhost
+    template: src=ratticweb.conf.j2 dest=/etc/apache2/sites-available/ratticweb.conf
+
+  - name: Create Rattic Vhost
+    copy: src=WSGIPythonPath.conf dest=/etc/apache2/conf-available/WSGIPythonPath.conf
+
+  - name: Enable apache Vhost
+    command:  /usr/sbin/a2ensite ratticweb.conf
+    notify: Restart Apache2
+
+  - name: Enable apache Vhost
+    command:  /usr/sbin/a2enconf WSGIPythonPath
+    notify: Restart Apache2
+
+  - name: remove MySQL test database
+    mysql_db: db=test state=absent login_user=root login_password={{ MySQL_root_pass }}
+
+  - name: Adding rattic database
+    mysql_db: name=rattic state=present login_user=root login_password={{ MySQL_root_pass }}
+
+  - name: Adding user to rattic DB
+    mysql_user: name=rattic password={{ MySQL_rattic_pass }} priv=rattic.*:ALL state=present login_user=root login_password={{ MySQL_root_pass }}
+
+  - name: Setup RatticWeb local.cfg file
+    template: src=local.cfg.j2 dest=/opt/apps/RatticWeb/conf/local.cfg backup=yes
+    notify: Restart Apache2
+    
